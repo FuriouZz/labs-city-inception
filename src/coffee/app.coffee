@@ -346,6 +346,29 @@ window.onload = ->
 
             return mesh
 
+        # Create buildings
+        buildSquare: (i)->
+            targetAngle = Math.random() * PI2
+
+            # Building mesh
+            geometry = new THREE.CubeGeometry 1, 1, 1
+            geometry.applyMatrix new THREE.Matrix4().makeTranslation 0, -0.5, 0
+            mesh = new THREE.Mesh(geometry)
+            mesh.position.x = Math.cos(targetAngle) * 600
+            mesh.position.z = Math.sin(targetAngle) * 600
+            mesh.position.y = 400 * Math.random() + 100
+
+            scale = Math.random() * Math.random() * 400
+
+            mesh.scale.set scale, scale, scale
+
+            mesh.rotation.x = Math.random() * PI2
+            mesh.rotation.y = Math.random() * PI2
+            mesh.rotation.z = Math.random() * PI2
+
+            return mesh
+
+
         # Create city
         cityMesh: ->
             # Ground
@@ -367,7 +390,12 @@ window.onload = ->
             for i in [0...600]
                 THREE.GeometryUtils.merge cityGeometry, @buildingMesh(i)
 
+            decoGeometry = new THREE.Geometry
+            for i in [0...50]
+                THREE.GeometryUtils.merge decoGeometry, @buildSquare()
+
             THREE.GeometryUtils.merge cityGeometry, ground
+            THREE.GeometryUtils.merge cityGeometry, decoGeometry
 
             cityMesh = new THREE.Mesh cityGeometry, planeMaterial
             cityMesh.scale.set 1, 1, 1
