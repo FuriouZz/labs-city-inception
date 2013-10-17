@@ -1,6 +1,6 @@
 (function() {
   window.onload = function() {
-    var Cfg, DarkGrey, PI, PI2, ambiant, ax, ay, buildGeometry, camera, cameraAngle, circle, city, distanceCirle, friction, helper, light, lightAngle, limit, limitAcc, map_range, render, renderer, scene, targetPos, targeted, vx, vy;
+    var Cfg, Colors, DarkGrey, PI, PI2, ambiant, ax, ay, buildGeometry, camera, cameraAngle, circle, city, distanceCirle, friction, light, lightAngle, limit, limitAcc, map_range, plane, projector, render, renderer, scene, targetPos, targeted, vx, vy;
     Cfg = {
       LIGHT_SPEED: 0.0025,
       TRANSITION_TARGET_SPEED: 0.05,
@@ -9,6 +9,7 @@
       CITY_COLOR: '#FFAA22',
       AMBIANT_COLOR: '#1A2024'
     };
+    Colors = [['#C365AC', '#3B2389'], ['#FFAA22', '#20242A'], ['#21F2FF', '#417EA7'], ['#21F2FF', '#231137'], ['#FFFFFF', '#484848'], ['#00FF96', '#162A16']];
     PI = Math.PI;
     PI2 = Math.PI * 2;
     ax = 0;
@@ -43,12 +44,13 @@
     light.shadowDarkness = 0.5;
     light.shadowMapWidth = 1024;
     light.shadowMapHeight = 1024;
-    helper = new THREE.SpotLightHelper(light, 50);
     targetPos = new THREE.Vector3;
+    plane = null;
     cameraAngle = 0;
     lightAngle = 100;
     circle = null;
     distanceCirle = 0;
+    projector = new THREE.Projector;
     targeted = false;
     map_range = function(value, low1, high1, low2, high2) {
       return low2 + (high2 - low2) * (value - low1) / (high1 - low1);
@@ -78,27 +80,14 @@
       light.position.y = 500;
       camTanAngle = Math.atan2(camera.position.z, camera.position.x);
       cirTanAngle = Math.atan2(circle.position.z, circle.position.x);
-      if ((camTanAngle > cirTanAngle - PI / 8) && (camTanAngle < cirTanAngle + PI / 8)) {
+      if (targeted || (camTanAngle > cirTanAngle - PI / 8 && camTanAngle < cirTanAngle + PI / 8)) {
         targetPos.x += (circle.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED;
         targetPos.y += (circle.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED;
         targetPos.z += (circle.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED;
-        if (!targeted) {
-          TweenMax.to(camera.position, 3, {
-            x: Math.floor(circle.position.x + 25),
-            y: Math.floor(circle.position.y + 25),
-            z: Math.floor(circle.position.z + 25),
-            onComplete: function() {
-              return console.log('hello');
-            },
-            ease: Expo.easeOut
-          });
-        }
-        targeted = true;
       } else {
         targetPos.x += (scene.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED;
         targetPos.y += (scene.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED;
         targetPos.z += (scene.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED;
-        targeted = false;
       }
       camera.lookAt(targetPos);
       return renderer.render(scene, camera);
@@ -110,21 +99,25 @@
         var circleColor, mesh, targetAngle;
         targetAngle = Math.random() * PI2;
         mesh = new THREE.Mesh(buildGeometry);
-        mesh.position.x = Math.cos(targetAngle) * Math.random() * 250;
-        mesh.position.z = Math.sin(targetAngle) * Math.random() * 250;
+        mesh.position.x = Math.cos(targetAngle) * (Math.random() + 0.075) * 250;
+        mesh.position.z = Math.sin(targetAngle) * (Math.random() + 0.075) * 250;
         mesh.position.y = Math.random() * PI2;
         mesh.scale.x = Math.random() * Math.random() * Math.random() * Math.random() * 50 + 10;
         mesh.scale.z = mesh.scale.x;
         mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 8 + 8;
-        if (mesh.position.distanceTo(scene.position) > 150.0 && !circle) {
-          console.log('haaalllooo');
+        if (mesh.position.distanceTo(scene.position) > 200 && !circle) {
+          plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({
+            color: 0xd0e0f0
+          }));
+          plane.position.y = 2;
+          plane.rotation.x = -PI / 2;
           circleColor = new THREE.Color(Cfg.CITY_COLOR);
-          circle = new THREE.Mesh(new THREE.SphereGeometry(10, 100, 100), new THREE.MeshLambertMaterial({
+          circle = new THREE.Mesh(new THREE.SphereGeometry(2.5, 100, 100), new THREE.MeshLambertMaterial({
             color: circleColor.getHex()
           }));
           circle.position.x = mesh.position.x;
           circle.position.z = mesh.position.z;
-          circle.position.y = 0;
+          circle.position.y = mesh.position.y + 100;
           circle.castShadow = true;
           scene.add(circle);
           distanceCirle = circle.position.distanceTo(scene.position);
@@ -135,17 +128,18 @@
         var cityGeometry, cityMesh, ground, i, planeColor, planeGeometry, planeMaterial, _i;
         planeColor = new THREE.Color(Cfg.CITY_COLOR);
         planeGeometry = new THREE.PlaneGeometry(400, 400);
+        planeGeometry.verticesNeedUpdate = true;
         planeMaterial = new THREE.MeshPhongMaterial({
           color: planeColor.getHex()
         });
         planeMaterial.ambiant = planeMaterial.color;
         ground = new THREE.Mesh(planeGeometry, planeMaterial);
         ground.rotation.x = -PI / 2;
-        ground.scale.set(100, 100, 100);
+        ground.scale.set(2, 2, 2);
         ground.castShadow = true;
         ground.receiveShadow = true;
         cityGeometry = new THREE.Geometry;
-        for (i = _i = 0; _i < 500; i = ++_i) {
+        for (i = _i = 0; _i < 600; i = ++_i) {
           THREE.GeometryUtils.merge(cityGeometry, this.buildingMesh(i));
         }
         THREE.GeometryUtils.merge(cityGeometry, ground);
@@ -161,7 +155,7 @@
         return ambient = new THREE.AmbientLight(ambiantColor.getHex());
       },
       events: function() {
-        return document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function(e) {
           if (e.keyCode === 37) {
             ax += 0.001;
           }
@@ -178,8 +172,73 @@
             return DarkGrey.restartScene();
           }
         });
+        return document.addEventListener('click', function(event) {
+          var intersects, raycaster, vector;
+          event.preventDefault();
+          vector = new THREE.Vector3((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1, 0.5);
+          projector.unprojectVector(vector, camera);
+          raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+          intersects = raycaster.intersectObject(circle);
+          if (intersects.length > 0) {
+            targeted = true;
+            return TweenMax.to(circle.position, 1, {
+              x: plane.position.x,
+              y: plane.position.y + 300,
+              z: plane.position.z,
+              delay: 1,
+              onComplete: function() {
+                return TweenMax.to(camera.position, 1, {
+                  x: circle.position.x + 25,
+                  y: circle.position.y + 25,
+                  z: circle.position.z - 25,
+                  ease: Expo.easeInOut,
+                  delay: 0.5,
+                  onComplete: function() {
+                    scene.add(plane);
+                    return TweenMax.to(circle.position, 1, {
+                      y: -100,
+                      delay: 0.25,
+                      onComplete: function() {
+                        return TweenMax.to(camera.position, 0.5, {
+                          delay: 0.25,
+                          x: circle.position.x,
+                          y: plane.position.y + 1,
+                          z: circle.position.z,
+                          onComplete: function() {
+                            return DarkGrey.restartScene();
+                          }
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
       },
-      restartScene: function() {},
+      restartScene: function() {
+        var clrs;
+        camera.position.set(5000, 2000, 5000);
+        targeted = false;
+        clrs = Colors[Math.floor(Math.random() * Colors.length)];
+        Cfg.CITY_COLOR = clrs[0];
+        Cfg.AMBIANT_COLOR = clrs[1];
+        scene.remove(plane);
+        scene.remove(circle);
+        scene.remove(city);
+        scene.remove(ambiant);
+        circle = null;
+        camera.lookAt(scene.position);
+        scene.add(city = DarkGrey.cityMesh());
+        scene.add(ambiant = DarkGrey.lights());
+        TweenMax.to(camera.position, 2, {
+          y: 150
+        });
+        return TweenMax.to(Cfg, 2, {
+          RADIUS: 245
+        });
+      },
       initGui: function() {
         var gui;
         gui = new dat.GUI;
@@ -196,7 +255,6 @@
       },
       renderScene: function() {
         scene.add(light);
-        scene.add(helper);
         scene.add(city = this.cityMesh());
         scene.add(ambiant = this.lights());
         return render();

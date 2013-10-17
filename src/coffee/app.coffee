@@ -8,6 +8,15 @@ window.onload = ->
         CITY_COLOR: '#FFAA22'
         AMBIANT_COLOR: '#1A2024'
 
+    Colors = [
+        ['#C365AC', '#3B2389'], # Violet/Pink
+        ['#FFAA22', '#20242A'], # Gotham
+        ['#21F2FF', '#417EA7'], # Winter
+        ['#21F2FF', '#231137'], # Joker
+        ['#FFFFFF', '#484848'], # Ghost
+        ['#00FF96', '#162A16']  # Green
+    ]
+
     PI     = Math.PI
     PI2    = Math.PI*2
 
@@ -52,9 +61,8 @@ window.onload = ->
     light.shadowMapWidth      = 1024
     light.shadowMapHeight     = 1024
 
-    helper = new THREE.SpotLightHelper light, 50
-
-    targetPos = new THREE.Vector3
+    targetPos   = new THREE.Vector3
+    plane = null
 
     cameraAngle =  0
     lightAngle  = 100
@@ -62,6 +70,7 @@ window.onload = ->
     circle = null
     distanceCirle = 0
 
+    projector = new THREE.Projector
     targeted = false
 
     map_range = (value, low1, high1, low2, high2)->
@@ -101,41 +110,16 @@ window.onload = ->
         # Target city or ellipse
         camTanAngle = Math.atan2(camera.position.z, camera.position.x)
         cirTanAngle = Math.atan2(circle.position.z, circle.position.x)
-        if (camTanAngle > cirTanAngle - PI / 8) and (camTanAngle < cirTanAngle + PI / 8)
+        if targeted or (camTanAngle > cirTanAngle - PI / 8 and camTanAngle < cirTanAngle + PI / 8)
             targetPos.x += (circle.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.y += (circle.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.z += (circle.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED
-
-
-            if not targeted
-                TweenMax.to(camera.position, 3,
-                    x:Math.floor(circle.position.x+25)
-                    y:Math.floor(circle.position.y+25)
-                    z:Math.floor(circle.position.z+25)
-                    onComplete: ->
-                        console.log 'hello'
-                    ease: Expo.easeOut
-                )
-
-            targeted = true
-
         else
             targetPos.x += (scene.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.y += (scene.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.z += (scene.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED
-            targeted = false
 
         camera.lookAt targetPos
-
-        # test = (camera.position.y - circle.position.y) * 0.02
-        # camera.position.y -= test
-
-        # camera.position.y = map_range(camera.position.distanceTo(circle.position), distanceCirle, 500, circle.position.y, 250)
-
-
-        # dist = camera.position.distanceTo circle.position
-        # if dist < 100
-        #     DarkGrey.restartScene()
 
         renderer.render scene, camera
 
@@ -152,21 +136,27 @@ window.onload = ->
 
             # Building mesh
             mesh = new THREE.Mesh buildGeometry
-            mesh.position.x = Math.cos(targetAngle) * Math.random() * 250
-            mesh.position.z = Math.sin(targetAngle) * Math.random() * 250
+            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.075) * 250
+            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.075) * 250
             mesh.position.y = Math.random()*PI2
 
             mesh.scale.x = Math.random()*Math.random()*Math.random()*Math.random() * 50 + 10
             mesh.scale.z = mesh.scale.x
             mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 8 + 8
 
-            if mesh.position.distanceTo(scene.position) > 150.0 and not circle
-                console.log 'haaalllooo'
+            if mesh.position.distanceTo(scene.position) > 200 and not circle
+                plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ color: 0xd0e0f0 }))
+                # plane.position.x = mesh.position.x
+                # plane.position.z = mesh.position.z
+                # plane.position.y = mesh.scale.y + 3
+                plane.position.y = 2
+                plane.rotation.x = -PI / 2
+
                 circleColor = new THREE.Color(Cfg.CITY_COLOR)
-                circle = new THREE.Mesh new THREE.SphereGeometry(10, 100, 100), new THREE.MeshLambertMaterial({ color: circleColor.getHex() })
+                circle = new THREE.Mesh new THREE.SphereGeometry(2.5, 100, 100), new THREE.MeshLambertMaterial({ color: circleColor.getHex() })
                 circle.position.x = mesh.position.x
                 circle.position.z = mesh.position.z
-                circle.position.y = 0 #mesh.position.y + mesh.scale.y + 100
+                circle.position.y = mesh.position.y + 100
                 circle.castShadow = true
                 scene.add circle
 
@@ -177,21 +167,22 @@ window.onload = ->
         # Create city
         cityMesh: ->
             # Ground
-            planeColor = new THREE.Color(Cfg.CITY_COLOR)
-            planeGeometry = new THREE.PlaneGeometry 400, 400
+            planeColor                       = new THREE.Color(Cfg.CITY_COLOR)
+            planeGeometry                    = new THREE.PlaneGeometry 400, 400
+            planeGeometry.verticesNeedUpdate = true
             planeMaterial = new THREE.MeshPhongMaterial
                 color: planeColor.getHex()
             planeMaterial.ambiant = planeMaterial.color
 
             ground               = new THREE.Mesh planeGeometry, planeMaterial
             ground.rotation.x    = -PI / 2
-            ground.scale.set 100, 100, 100
+            ground.scale.set 2, 2, 2
             ground.castShadow    = true
             ground.receiveShadow = true
 
             # City
             cityGeometry = new THREE.Geometry
-            for i in [0...500]
+            for i in [0...600]
                 THREE.GeometryUtils.merge cityGeometry, @buildingMesh(i)
 
             THREE.GeometryUtils.merge cityGeometry, ground
@@ -216,27 +207,76 @@ window.onload = ->
                     ax -= 0.001
                 if e.keyCode == 38
                     ay += 0.05
-
-                    # if targeted
-                        # camera.position.y = map_range(camera.position.distanceTo(circle.position), distanceCirle, 500, circle.position.y, 250)
                 if e.keyCode == 40
                     ay -= 0.05
 
                 if e.keyCode == 32
                     DarkGrey.restartScene()
 
+            document.addEventListener 'click', (event)->
+
+                event.preventDefault();
+
+                vector = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1, 0.5 )
+                projector.unprojectVector( vector, camera )
+
+                raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() )
+
+                intersects = raycaster.intersectObject( circle )
+
+                if ( intersects.length > 0 )
+                    targeted = true
+
+                    TweenMax.to circle.position, 1,
+                        x:plane.position.x
+                        y:plane.position.y + 300
+                        z:plane.position.z
+                        delay:1
+                        onComplete: ->
+                            TweenMax.to camera.position, 1,
+                                x:circle.position.x+25
+                                y:circle.position.y+25
+                                z:circle.position.z-25
+                                ease: Expo.easeInOut
+                                delay: 0.5
+                                onComplete: ->
+                                    scene.add plane
+                                    TweenMax.to circle.position, 1,
+                                        y: -100
+                                        delay:0.25
+                                        onComplete: ->
+                                            TweenMax.to camera.position, 0.5,
+                                                delay:0.25
+                                                x:circle.position.x
+                                                y:plane.position.y + 1
+                                                z:circle.position.z
+                                                onComplete: ->
+                                                    DarkGrey.restartScene()
+
+
         restartScene: ->
-            # TweenLite.to(Cfg, 10, { RADIUS: 1000 })
+            camera.position.set 5000, 2000, 5000
+            targeted = false
 
-            # scene.remove circle
-            # scene.remove city
-            # scene.remove ambiant
+            clrs              = Colors[Math.floor(Math.random() * Colors.length)]
+            Cfg.CITY_COLOR    = clrs[0]
+            Cfg.AMBIANT_COLOR = clrs[1]
 
-            # circle = null
-            # camera.lookAt scene.position
+            scene.remove plane
+            scene.remove circle
+            scene.remove city
+            scene.remove ambiant
 
-            # scene.add    city = DarkGrey.cityMesh()
-            # scene.add    ambiant = DarkGrey.lights()
+            circle = null
+            camera.lookAt scene.position
+
+            scene.add    city = DarkGrey.cityMesh()
+            scene.add    ambiant = DarkGrey.lights()
+
+            TweenMax.to camera.position, 2,
+                y:150
+            TweenMax.to Cfg, 2,
+                RADIUS: 245
 
         initGui: ->
             gui = new dat.GUI
@@ -253,7 +293,6 @@ window.onload = ->
 
         renderScene: ->
             scene.add light
-            scene.add helper
             scene.add city = @cityMesh()
             scene.add ambiant = @lights()
             render()
