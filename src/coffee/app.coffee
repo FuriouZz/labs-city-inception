@@ -7,16 +7,55 @@ window.onload = ->
         CAMERA_Y: 500
         CITY_COLOR: '#FFAA22'
         AMBIANT_COLOR: '#1A2024'
+        SHADOW_BIAS: 0.0001
+        SHADOW_DARKNESS: 0.5
 
-    Colors = [
-        ['#C365AC', '#3B2389'], # Violet/Pink
-        ['#FFAA22', '#20242A'], # Gotham
-        ['#21F2FF', '#417EA7'], # Winter
-        ['#21F2FF', '#231137'], # Joker
-        ['#FFFFFF', '#484848'], # Ghost
-        ['#00FF96', '#162A16']  # Green
+    Themes = [
+        # Violet/Pink
+        {
+            cityColor: '#C365AC'
+            ambiantColor: '#3B2389'
+            cityRadius: 50
+        }
+
+        # Gotham
+        {
+            cityColor: '#FFAA22'
+            ambiantColor: '#20242A'
+            cityRadius: 100
+        }
+
+        # Winter
+        {
+            cityColor: '#21F2FF'
+            ambiantColor: '#417EA7'
+            cityRadius: 150
+        }
+
+        # Joker
+        {
+            cityColor: '#00FFB3'
+            ambiantColor: '#231137'
+            cityRadius: 200
+        }
+
+        # Ghost
+        {
+            cityColor: '#FFFFFF'
+            ambiantColor: '#484848'
+            cityRadius: 250
+        }
+
+        # Green
+        {
+            cityColor: '#00FF96'
+            ambiantColor: '#162A16'
+            cityRadius: 300
+        }
+
     ]
 
+    console.log Themes
     PI     = Math.PI
     PI2    = Math.PI*2
 
@@ -32,34 +71,6 @@ window.onload = ->
     city    = null
     ambiant = null
 
-    scene     = new THREE.Scene
-    scene.fog = new THREE.FogExp2( 0xd0e0f0, 0.0015 )
-
-    camera            = new THREE.PerspectiveCamera 75, window.innerWidth / window.innerHeight, 0.1, 10000
-    camera.position.y = 150
-
-    renderer =  new THREE.WebGLRenderer antialias: true
-    renderer.shadowMapEnabled = true
-    renderer.shadowMapSoft    = true
-    renderer.shadowMapType    = THREE.PCFShadowMap
-    renderer.setSize window.innerWidth, window.innerHeight
-    document.body.appendChild renderer.domElement
-
-    light  = new THREE.SpotLight 0xFFFFFF, 4, 0, PI / 16, 500
-    light.position.set 0, Cfg.CAMERA_Y, 0
-    light.target.position.set 0, 0, 0
-
-    light.castShadow          = true
-
-    light.shadowCameraNear    = 700
-    light.shadowCameraFar     = camera.far
-    light.shadowCameraFov     = 50
-
-    light.shadowBias          = 0.0001
-    light.shadowDarkness      = 0.5
-
-    light.shadowMapWidth      = 1024
-    light.shadowMapHeight     = 1024
 
     targetPos   = new THREE.Vector3
     plane = null
@@ -71,17 +82,141 @@ window.onload = ->
     distanceCirle = 0
 
     projector = new THREE.Projector
-    targeted = false
+
+    isTargeted = false
+    isAnimated = false
+
+    cirTanAngle = 0
+
+    theme = Themes[Math.floor(Math.random() * Themes.length)]
+
+
+
+
+
+    scene     = new THREE.Scene
+    scene.fog = new THREE.FogExp2( 0xd0e0f0, 0.0020 )#0xd0e0f0, 0.0015 )
+
+    camera            = new THREE.PerspectiveCamera 75, window.innerWidth / window.innerHeight, 0.1, 10000
+    camera.position.y = 150
+
+    renderer =  new THREE.WebGLRenderer antialias: true
+    renderer.shadowMapEnabled = true
+    renderer.shadowMapSoft    = true
+    renderer.shadowMapType    = THREE.PCFShadowMap
+    renderer.setSize window.innerWidth, window.innerHeight
+    document.body.appendChild renderer.domElement
+
+
+
+
+    clearMask = new THREE.ClearMaskPass()
+    renderModel = new THREE.RenderPass( scene, camera )
+
+    renderMaskInverse = new THREE.MaskPass( scene, camera );
+    renderMaskInverse.inverse = true
+
+    effectHBlur = new THREE.ShaderPass( THREE.HorizontalBlurShader )
+    effectVBlur = new THREE.ShaderPass( THREE.VerticalBlurShader )
+    effectHBlur.uniforms[ 'h' ].value = 2 / ( window.innerWidth / 2 )
+    effectVBlur.uniforms[ 'v' ].value = 2 / ( window.innerHeight / 2 )
+
+    effectFilm = new THREE.FilmPass( 0.10, 0, 0, false )
+    effectFilmBW = new THREE.FilmPass( 0.35, 0.5, 2048, true )
+
+    shaderVignette = THREE.VignetteShader
+    effectVignette = new THREE.ShaderPass( shaderVignette )
+    effectVignette.uniforms[ "offset" ].value = 0.5
+    effectVignette.uniforms[ "darkness" ].value = 1.6
+
+    effect = new THREE.ShaderPass( THREE.BleachBypassShader );
+    # effect.uniforms[ 'tDiffuse2' ].value = effectSave.renderTarget;
+    # effect.uniforms[ 'mixRatio' ].value = 0.65
+
+    # effectSave = new THREE.SavePass( new THREE.WebGLRenderTarget( window.innerWidth, window.innerWidth, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBuffer: false } ) )
+    effectFilm.renderToScreen = true
+
+    # effect.enabled = true
+    # effectSave.enabled = true
+
+    effect.renderToScreen = true
+
+
+    rtParams =
+        minFilter: THREE.LinearFilter
+        magFilter: THREE.LinearFilter
+        format: THREE.RGBFormat
+        stencilBuffer: true
+
+
+    composer = new THREE.EffectComposer( renderer, new THREE.WebGLRenderTarget( window.innerWidth, window.innerWidth, rtParams ) )
+
+    composer.addPass( renderModel )
+    composer.addPass( effectFilm )
+    # composer.addPass( effect )
+    # composer.addPass( effectSave )
+
+
+    light2  = new THREE.SpotLight 0xd0e0f0, 25, 0, PI / 16, 100
+    light2.position.y = 50
+    scene.add light2
+
+    light  = new THREE.SpotLight 0xFFFFFF, 4, 0, PI / 16, 500
+    light.position.set 0, Cfg.CAMERA_Y, 0
+    light.target.position.set 0, 0, 0
+
+    light.castShadow          = true
+
+    light.shadowCameraNear    = 700
+    light.shadowCameraFar     = camera.far
+    light.shadowCameraFov     = 50
+
+    light.shadowBias          = Cfg.SHADOW_BIAS
+    light.shadowDarkness      = Cfg.SHADOW_DARKNESS
+
+    light.shadowCameraRight    =  5
+    light.shadowCameraLeft     = -5
+    light.shadowCameraTop      =  5
+    light.shadowCameraBottom   = -5
+
+    light.shadowMapWidth      = 2048
+    light.shadowMapHeight     = 2048
+
+    skyboxMesh = new THREE.Mesh( new THREE.CubeGeometry(10000, 10000, 10000), new THREE.MeshPhongMaterial({ color: 0xd0e0f0, side: THREE.BackSide }) )
+    scene.add skyboxMesh
+
+
+    # MUSIC
+    music = new Howl(
+        urls: ['plane.mp3']
+        volume: 0.5
+        loop: true
+    ).play()
+
+    breath0 = new Howl(
+        urls: ['breath0.wav']
+        volume: 0.25
+    )
+
+    breath1 = new Howl(
+        urls: ['wind.mp3']
+        volume: 0.25
+    )
+
 
     map_range = (value, low1, high1, low2, high2)->
         return low2 + (high2 - low2) * (value - low1) / (high1 - low1)
 
+    inRadius = (obj1, obj2)->
+        obj1Angle = Math.atan2(obj1.position.z, obj1.position.x)
+        obj2Angle = Math.atan2(obj2.position.z, obj2.position.x)
+        return (obj1Angle > obj2Angle - PI / 8 and obj1Angle < obj2Angle + PI / 8)
 
     #Render the @scene
     render = ->
         requestAnimationFrame render
 
-        if not targeted
+        if not (isTargeted and (isAnimated or inRadius(camera, circle)))
             # Rotate camera
             ax = Math.max(Math.min(limitAcc, ax), -limitAcc)
             ax *= friction
@@ -93,13 +228,13 @@ window.onload = ->
             camera.position.x = 1.5 * Cfg.RADIUS * Math.cos cameraAngle
             camera.position.z = 1.5 * Cfg.RADIUS * Math.sin cameraAngle
 
-        ay = Math.max(Math.min(5, ay), -5)
-        ay *= friction
-        vy *= friction
-        vy += ay
-        vy = Math.max(Math.min(5, vy), -5)
+            ay = Math.max(Math.min(5, ay), -5)
+            ay *= friction
+            vy *= friction
+            vy += ay
+            vy = Math.max(Math.min(5, vy), -5)
 
-        camera.position.y += vy
+            camera.position.y += vy
 
         # Rotate light
         lightAngle += Cfg.LIGHT_SPEED
@@ -108,9 +243,7 @@ window.onload = ->
         light.position.y = 500
 
         # Target city or ellipse
-        camTanAngle = Math.atan2(camera.position.z, camera.position.x)
-        cirTanAngle = Math.atan2(circle.position.z, circle.position.x)
-        if targeted or (camTanAngle > cirTanAngle - PI / 8 and camTanAngle < cirTanAngle + PI / 8)
+        if isTargeted or (not isTargeted and inRadius(camera, circle))
             targetPos.x += (circle.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.y += (circle.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.z += (circle.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED
@@ -119,15 +252,66 @@ window.onload = ->
             targetPos.y += (scene.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.z += (scene.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED
 
+        # Animate targeted
+        if isTargeted and not inRadius(camera, circle)
+            ax += 0.05
+        else if isTargeted and inRadius(camera, circle) and not isAnimated
+            ax = 0
+            isAnimated = true
+            animateCam()
+
         camera.lookAt targetPos
 
-        renderer.render scene, camera
+        renderer.clear()
+        composer.render(0.01)
+        # renderer.render scene, camera
+
+
+    animateCam = ->
+        TweenMax.to circle.position, 1,
+                x:plane.position.x
+                y:plane.position.y + 300
+                z:plane.position.z
+                ease: Expo.easeInOut
+                delay:0.25
+                onStart: ->
+                    breath1.stop().fadeIn(0.1, 1000)
+                    breath1.play().fadeOut(0, 1000)
+                onComplete: ->
+                    TweenMax.to camera.position, 1,
+                        x:circle.position.x+25
+                        y:circle.position.y+25
+                        z:circle.position.z-25
+                        ease: Expo.easeInOut
+                        delay: 0.5
+                        onStart: ->
+                            breath0.stop().fadeIn(0.5, 1000)
+                            breath0.play().fadeOut(0, 1000)
+                        onComplete: ->
+                            scene.add plane
+                            TweenMax.to circle.position, 1,
+                                    y: -100
+                                    ease: Expo.easeInOut
+                                    delay:0.25
+                                    onStart: ->
+                                        breath1.stop().fadeIn(0.1, 1000)
+                                        breath1.play().fadeOut(0, 1000)
+                                    onComplete: ->
+                                        TweenMax.to camera.position, 0.5,
+                                            delay:0.25
+                                            x:circle.position.x
+                                            y:plane.position.y + 1
+                                            z:circle.position.z
+                                            ease: Expo.easeInOut
+                                            onStart: ->
+                                                breath0.stop().fadeIn(0.5, 1000)
+                                                breath0.play().fadeOut(0, 1000)
+                                            onComplete: ->
+                                                DarkGrey.restartScene()
 
     # Building geometry
     buildGeometry = new THREE.CubeGeometry 1, 1, 1
     buildGeometry.applyMatrix new THREE.Matrix4().makeTranslation 0, 0.5, 0
-
-
 
     DarkGrey =
         # Create buildings
@@ -136,19 +320,17 @@ window.onload = ->
 
             # Building mesh
             mesh = new THREE.Mesh buildGeometry
-            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.075) * 250
-            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.075) * 250
-            mesh.position.y = Math.random()*PI2
+            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.075) * theme.cityRadius
+            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.075) * theme.cityRadius
+            mesh.position.y = 0
 
             mesh.scale.x = Math.random()*Math.random()*Math.random()*Math.random() * 50 + 10
             mesh.scale.z = mesh.scale.x
             mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 8 + 8
 
-            if mesh.position.distanceTo(scene.position) > 200 and not circle
+            if mesh.position.distanceTo(scene.position) > theme.cityRadius - 50 and not circle
+                console.log theme.cityRadius
                 plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ color: 0xd0e0f0 }))
-                # plane.position.x = mesh.position.x
-                # plane.position.z = mesh.position.z
-                # plane.position.y = mesh.scale.y + 3
                 plane.position.y = 2
                 plane.rotation.x = -PI / 2
 
@@ -176,7 +358,7 @@ window.onload = ->
 
             ground               = new THREE.Mesh planeGeometry, planeMaterial
             ground.rotation.x    = -PI / 2
-            ground.scale.set 2, 2, 2
+            ground.scale.set 100, 100, 100
             ground.castShadow    = true
             ground.receiveShadow = true
 
@@ -201,66 +383,34 @@ window.onload = ->
 
         events: ->
             document.addEventListener 'keydown', (e)->
-                if e.keyCode == 37
-                    ax += 0.001
-                if e.keyCode == 39
-                    ax -= 0.001
-                if e.keyCode == 38
-                    ay += 0.05
-                if e.keyCode == 40
-                    ay -= 0.05
+                if not isTargeted
+                    if e.keyCode == 37
+                        ax += 0.001
+                    if e.keyCode == 39
+                        ax -= 0.001
+                    if e.keyCode == 38
+                        ay += 0.05
+                    if e.keyCode == 40
+                        ay -= 0.05
 
-                if e.keyCode == 32
-                    DarkGrey.restartScene()
+                    if e.keyCode == 32
+                        isTargeted = true
 
             document.addEventListener 'click', (event)->
-
                 event.preventDefault();
-
-                vector = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1, 0.5 )
-                projector.unprojectVector( vector, camera )
-
-                raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() )
-
-                intersects = raycaster.intersectObject( circle )
-
-                if ( intersects.length > 0 )
-                    targeted = true
-
-                    TweenMax.to circle.position, 1,
-                        x:plane.position.x
-                        y:plane.position.y + 300
-                        z:plane.position.z
-                        delay:1
-                        onComplete: ->
-                            TweenMax.to camera.position, 1,
-                                x:circle.position.x+25
-                                y:circle.position.y+25
-                                z:circle.position.z-25
-                                ease: Expo.easeInOut
-                                delay: 0.5
-                                onComplete: ->
-                                    scene.add plane
-                                    TweenMax.to circle.position, 1,
-                                        y: -100
-                                        delay:0.25
-                                        onComplete: ->
-                                            TweenMax.to camera.position, 0.5,
-                                                delay:0.25
-                                                x:circle.position.x
-                                                y:plane.position.y + 1
-                                                z:circle.position.z
-                                                onComplete: ->
-                                                    DarkGrey.restartScene()
-
+                isTargeted = true
 
         restartScene: ->
-            camera.position.set 5000, 2000, 5000
-            targeted = false
+            breath0.fadeOut(0, 2000, -> breath0.stop())
+            breath1.fadeOut(0, 2000, -> breath1.stop())
 
-            clrs              = Colors[Math.floor(Math.random() * Colors.length)]
-            Cfg.CITY_COLOR    = clrs[0]
-            Cfg.AMBIANT_COLOR = clrs[1]
+            camera.position.set 5000, 2000, 5000
+            isTargeted = false
+            isAnimated = false
+
+            theme             = Themes[Math.floor(Math.random() * Themes.length)]
+            Cfg.CITY_COLOR    = theme.cityColor
+            Cfg.AMBIANT_COLOR = theme.ambiantColor
 
             scene.remove plane
             scene.remove circle
@@ -273,9 +423,9 @@ window.onload = ->
             scene.add    city = DarkGrey.cityMesh()
             scene.add    ambiant = DarkGrey.lights()
 
-            TweenMax.to camera.position, 2,
+            TweenMax.to camera.position, 1.5,
                 y:150
-            TweenMax.to Cfg, 2,
+            TweenMax.to Cfg, 1.5,
                 RADIUS: 245
 
         initGui: ->
@@ -283,9 +433,11 @@ window.onload = ->
             gui.add(Cfg, 'TRANSITION_TARGET_SPEED', 0, 1).name('target speed').listen()
             gui.add(Cfg, 'LIGHT_SPEED', 0, 0.01).name('light speed').listen()
             gui.add(Cfg, 'RADIUS').name('Camera radius').listen()
-            gui.addColor(Cfg, 'CITY_COLOR').name('City color')
-            gui.addColor(Cfg, 'AMBIANT_COLOR').name('Ambiant color')
+            gui.addColor(Cfg, 'CITY_COLOR').name('City color').listen()
+            gui.addColor(Cfg, 'AMBIANT_COLOR').name('Ambiant color').listen()
             gui.add(camera.position, 'y').name('Camera Y').listen()
+            gui.add(Cfg, 'SHADOW_BIAS').name('Shadow bias')
+            gui.add(Cfg, 'SHADOW_DARKNESS').name('Shadow darkness')
 
         init: ->
             @events()
@@ -295,6 +447,7 @@ window.onload = ->
             scene.add light
             scene.add city = @cityMesh()
             scene.add ambiant = @lights()
+
             render()
 
     DarkGrey.init()
