@@ -22,6 +22,16 @@ window.onload = ->
             cubeSize: 0
         }
 
+        # Gotham
+        {
+            cityColor: '#FFAA22'
+            ambiantColor: '#20242A'
+            cityRadius: 250
+            buildingsNumber: 600
+            cubesNumber: 50
+            cubeSize: 300
+        }
+
         # Winter
         {
             cityColor: '#21F2FF'
@@ -32,9 +42,19 @@ window.onload = ->
             cubeSize: 50
         }
 
+        # Night winter
+        {
+            cityColor: '#0069FF'
+            ambiantColor: '#212528'
+            cityRadius: 50
+            buildingsNumber: 400
+            cubesNumber: 10
+            cubeSize: 150
+        }
+
         # Joker
         {
-            cityColor: '#00FFB3'
+            cityColor: '#00FF77'
             ambiantColor: '#231137'
             cityRadius: 200
             buildingsNumber: 300
@@ -62,24 +82,14 @@ window.onload = ->
             cubeSize: 250
         }
 
-        # Gotham
+        # Sands
         {
-            cityColor: '#FFAA22'
-            ambiantColor: '#20242A'
-            cityRadius: 250
-            buildingsNumber: 600
-            cubesNumber: 50
-            cubeSize: 300
-        }
-
-        # Green/Red
-        {
-            cityColor: '#FF2020'
-            ambiantColor: '#46705A'
-            cityRadius: 250
-            buildingsNumber: 600
-            cubesNumber: 50
-            cubeSize: 400
+            cityColor: '#FFA400'
+            ambiantColor: '#4A2C0A'
+            cityRadius: 150
+            buildingsNumber: 50
+            cubesNumber: 20
+            cubeSize: 150
         }
 
         # Green/Red
@@ -367,13 +377,13 @@ window.onload = ->
 
             # Building mesh
             mesh = new THREE.Mesh buildGeometry
-            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.075) * theme.cityRadius
-            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.075) * theme.cityRadius
+            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.1) * theme.cityRadius
+            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.1) * theme.cityRadius
             mesh.position.y = 0
 
             mesh.scale.x = Math.random()*Math.random()*Math.random()*Math.random() * 50 + 10
             mesh.scale.z = mesh.scale.x
-            mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 8 + 8
+            mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 10 + 10
 
             if mesh.position.distanceTo(scene.position) > theme.cityRadius - 50 and not circle
                 plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ map:THREE.ImageUtils.loadTexture('images/portal.png'), wireframe: false, transparent: true }))
