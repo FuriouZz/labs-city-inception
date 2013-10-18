@@ -9,20 +9,17 @@ window.onload = ->
         AMBIANT_COLOR: '#1A2024'
         SHADOW_BIAS: 0.0001
         SHADOW_DARKNESS: 0.5
+        CUSTOM_COLORS: false
 
     Themes = [
-        # Violet/Pink
+        # Ghost
         {
-            cityColor: '#C365AC'
-            ambiantColor: '#3B2389'
-            cityRadius: 50
-        }
-
-        # Gotham
-        {
-            cityColor: '#FFAA22'
-            ambiantColor: '#20242A'
-            cityRadius: 100
+            cityColor: '#FFFFFF'
+            ambiantColor: '#484848'
+            cityRadius: 150
+            buildingsNumber: 50
+            cubesNumber: 0
+            cubeSize: 0
         }
 
         # Winter
@@ -30,6 +27,9 @@ window.onload = ->
             cityColor: '#21F2FF'
             ambiantColor: '#417EA7'
             cityRadius: 150
+            buildingsNumber: 100
+            cubesNumber: 10
+            cubeSize: 50
         }
 
         # Joker
@@ -37,25 +37,63 @@ window.onload = ->
             cityColor: '#00FFB3'
             ambiantColor: '#231137'
             cityRadius: 200
+            buildingsNumber: 300
+            cubesNumber: 20
+            cubeSize: 100
         }
 
-        # Ghost
+        # Violet/Pink
         {
-            cityColor: '#FFFFFF'
-            ambiantColor: '#484848'
+            cityColor: '#C365AC'
+            ambiantColor: '#3B2389'
             cityRadius: 250
+            buildingsNumber: 400
+            cubesNumber: 50
+            cubeSize: 200
         }
 
         # Green
         {
             cityColor: '#00FF96'
             ambiantColor: '#162A16'
-            cityRadius: 300
+            cityRadius: 250
+            buildingsNumber: 500
+            cubesNumber: 50
+            cubeSize: 250
+        }
+
+        # Gotham
+        {
+            cityColor: '#FFAA22'
+            ambiantColor: '#20242A'
+            cityRadius: 250
+            buildingsNumber: 600
+            cubesNumber: 50
+            cubeSize: 300
+        }
+
+        # Green/Red
+        {
+            cityColor: '#FF2020'
+            ambiantColor: '#46705A'
+            cityRadius: 250
+            buildingsNumber: 600
+            cubesNumber: 50
+            cubeSize: 400
+        }
+
+        # Green/Red
+        {
+            cityColor: '#FF2020'
+            ambiantColor: '#336464'
+            cityRadius: 150
+            buildingsNumber: 50
+            cubesNumber: 10
+            cubeSize: 150
         }
 
     ]
 
-    console.log Themes
     PI     = Math.PI
     PI2    = Math.PI*2
 
@@ -87,20 +125,21 @@ window.onload = ->
     isAnimated = false
 
     cirTanAngle = 0
+    themePos    = -1
 
-    theme = Themes[Math.floor(Math.random() * Themes.length)]
+    theme = Themes[themePos]
 
 
 
 
 
     scene     = new THREE.Scene
-    scene.fog = new THREE.FogExp2( 0xd0e0f0, 0.0020 )#0xd0e0f0, 0.0015 )
+    scene.fog = new THREE.FogExp2( 0xd0e0f0, 0.0020 )
 
     camera            = new THREE.PerspectiveCamera 75, window.innerWidth / window.innerHeight, 0.1, 10000
     camera.position.y = 150
 
-    renderer =  new THREE.WebGLRenderer antialias: true
+    renderer =  new THREE.WebGLRenderer antialias: false
     renderer.shadowMapEnabled = true
     renderer.shadowMapSoft    = true
     renderer.shadowMapType    = THREE.PCFShadowMap
@@ -121,7 +160,7 @@ window.onload = ->
     effectHBlur.uniforms[ 'h' ].value = 2 / ( window.innerWidth / 2 )
     effectVBlur.uniforms[ 'v' ].value = 2 / ( window.innerHeight / 2 )
 
-    effectFilm = new THREE.FilmPass( 0.10, 0, 0, false )
+    effectFilm = new THREE.FilmPass( 0.05, 0, 0, false )
     effectFilmBW = new THREE.FilmPass( 0.35, 0.5, 2048, true )
 
     shaderVignette = THREE.VignetteShader
@@ -139,7 +178,7 @@ window.onload = ->
     # effect.enabled = true
     # effectSave.enabled = true
 
-    effect.renderToScreen = true
+    # effect.renderToScreen = true
 
 
     rtParams =
@@ -216,6 +255,19 @@ window.onload = ->
     render = ->
         requestAnimationFrame render
 
+        rotateLight()
+        moveCamera()
+
+        composer.render(0.01)
+
+    rotateLight = ->
+        # Rotate light
+        lightAngle += Cfg.LIGHT_SPEED
+        light.position.x = 700 * Math.cos(lightAngle)
+        light.position.z = 700 * Math.sin(lightAngle)
+        light.position.y = 500
+
+    moveCamera = ->
         if not (isTargeted and (isAnimated or inRadius(camera, circle)))
             # Rotate camera
             ax = Math.max(Math.min(limitAcc, ax), -limitAcc)
@@ -234,13 +286,10 @@ window.onload = ->
             vy += ay
             vy = Math.max(Math.min(5, vy), -5)
 
-            camera.position.y += vy
+            if camera.position.y < 5 or camera.position.y > 300
+                vy = vy*-1
 
-        # Rotate light
-        lightAngle += Cfg.LIGHT_SPEED
-        light.position.x = 700 * Math.cos(lightAngle)
-        light.position.z = 700 * Math.sin(lightAngle)
-        light.position.y = 500
+            camera.position.y += vy
 
         # Target city or ellipse
         if isTargeted or (not isTargeted and inRadius(camera, circle))
@@ -262,11 +311,6 @@ window.onload = ->
 
         camera.lookAt targetPos
 
-        renderer.clear()
-        composer.render(0.01)
-        # renderer.render scene, camera
-
-
     animateCam = ->
         TweenMax.to circle.position, 1,
                 x:plane.position.x
@@ -275,7 +319,7 @@ window.onload = ->
                 ease: Expo.easeInOut
                 delay:0.25
                 onStart: ->
-                    breath1.stop().fadeIn(0.1, 1000)
+                    breath1.stop().fadeIn(0.5, 1000)
                     breath1.play().fadeOut(0, 1000)
                 onComplete: ->
                     TweenMax.to camera.position, 1,
@@ -294,7 +338,7 @@ window.onload = ->
                                     ease: Expo.easeInOut
                                     delay:0.25
                                     onStart: ->
-                                        breath1.stop().fadeIn(0.1, 1000)
+                                        breath1.stop().fadeIn(0.5, 1000)
                                         breath1.play().fadeOut(0, 1000)
                                     onComplete: ->
                                         TweenMax.to camera.position, 0.5,
@@ -313,6 +357,9 @@ window.onload = ->
     buildGeometry = new THREE.CubeGeometry 1, 1, 1
     buildGeometry.applyMatrix new THREE.Matrix4().makeTranslation 0, 0.5, 0
 
+    cubeGeometry = new THREE.CubeGeometry 1, 1, 1
+    cubeGeometry.applyMatrix new THREE.Matrix4().makeTranslation 0, -0.5, 0
+
     DarkGrey =
         # Create buildings
         buildingMesh: (i)->
@@ -329,8 +376,7 @@ window.onload = ->
             mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 8 + 8
 
             if mesh.position.distanceTo(scene.position) > theme.cityRadius - 50 and not circle
-                console.log theme.cityRadius
-                plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ color: 0xd0e0f0 }))
+                plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ map:THREE.ImageUtils.loadTexture('images/portal.png'), wireframe: false, transparent: true }))
                 plane.position.y = 2
                 plane.rotation.x = -PI / 2
 
@@ -351,14 +397,13 @@ window.onload = ->
             targetAngle = Math.random() * PI2
 
             # Building mesh
-            geometry = new THREE.CubeGeometry 1, 1, 1
-            geometry.applyMatrix new THREE.Matrix4().makeTranslation 0, -0.5, 0
-            mesh = new THREE.Mesh(geometry)
+
+            mesh = new THREE.Mesh(cubeGeometry)
             mesh.position.x = Math.cos(targetAngle) * 600
             mesh.position.z = Math.sin(targetAngle) * 600
             mesh.position.y = 400 * Math.random() + 100
 
-            scale = Math.random() * Math.random() * 400
+            scale = Math.random() * Math.random() * theme.cubeSize
 
             mesh.scale.set scale, scale, scale
 
@@ -387,12 +432,17 @@ window.onload = ->
 
             # City
             cityGeometry = new THREE.Geometry
-            for i in [0...600]
+            i = 0
+            while i < theme.buildingsNumber
+            # for i in [0...600]
                 THREE.GeometryUtils.merge cityGeometry, @buildingMesh(i)
+                i++
 
             decoGeometry = new THREE.Geometry
-            for i in [0...50]
+            j = 0
+            while j < theme.cubesNumber
                 THREE.GeometryUtils.merge decoGeometry, @buildSquare()
+                j++
 
             THREE.GeometryUtils.merge cityGeometry, ground
             THREE.GeometryUtils.merge cityGeometry, decoGeometry
@@ -424,10 +474,6 @@ window.onload = ->
                     if e.keyCode == 32
                         isTargeted = true
 
-            document.addEventListener 'click', (event)->
-                event.preventDefault();
-                isTargeted = true
-
         restartScene: ->
             breath0.fadeOut(0, 2000, -> breath0.stop())
             breath1.fadeOut(0, 2000, -> breath1.stop())
@@ -436,9 +482,13 @@ window.onload = ->
             isTargeted = false
             isAnimated = false
 
-            theme             = Themes[Math.floor(Math.random() * Themes.length)]
-            Cfg.CITY_COLOR    = theme.cityColor
-            Cfg.AMBIANT_COLOR = theme.ambiantColor
+            themePos++
+            if themePos >= Themes.length
+                themePos = 0
+
+            theme             = Themes[themePos]
+            Cfg.CITY_COLOR    = if Cfg.CUSTOM_COLORS then Cfg.CITY_COLOR else theme.cityColor
+            Cfg.AMBIANT_COLOR = if Cfg.CUSTOM_COLORS then Cfg.AMBIANT_COLOR else theme.ambiantColor
 
             scene.remove plane
             scene.remove circle
@@ -457,7 +507,7 @@ window.onload = ->
                 RADIUS: 245
 
         initGui: ->
-            gui = new dat.GUI
+            gui = new dat.GUI()
             gui.add(Cfg, 'TRANSITION_TARGET_SPEED', 0, 1).name('target speed').listen()
             gui.add(Cfg, 'LIGHT_SPEED', 0, 0.01).name('light speed').listen()
             gui.add(Cfg, 'RADIUS').name('Camera radius').listen()
@@ -466,6 +516,8 @@ window.onload = ->
             gui.add(camera.position, 'y').name('Camera Y').listen()
             gui.add(Cfg, 'SHADOW_BIAS').name('Shadow bias')
             gui.add(Cfg, 'SHADOW_DARKNESS').name('Shadow darkness')
+            gui.add(Cfg, 'CUSTOM_COLORS').name('custom colors')
+            gui.close()
 
         init: ->
             @events()
@@ -473,10 +525,9 @@ window.onload = ->
 
         renderScene: ->
             scene.add light
-            scene.add city = @cityMesh()
-            scene.add ambiant = @lights()
 
             render()
 
     DarkGrey.init()
+    DarkGrey.restartScene()
     DarkGrey.renderScene()

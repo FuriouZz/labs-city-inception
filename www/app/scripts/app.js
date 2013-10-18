@@ -1,6 +1,6 @@
 (function() {
   window.onload = function() {
-    var Cfg, DarkGrey, PI, PI2, Themes, ambiant, animateCam, ax, ay, breath0, breath1, buildGeometry, camera, cameraAngle, cirTanAngle, circle, city, clearMask, composer, distanceCirle, effect, effectFilm, effectFilmBW, effectHBlur, effectVBlur, effectVignette, friction, inRadius, isAnimated, isTargeted, light, light2, lightAngle, limit, limitAcc, map_range, music, plane, projector, render, renderMaskInverse, renderModel, renderer, rtParams, scene, shaderVignette, skyboxMesh, targetPos, theme, vx, vy;
+    var Cfg, DarkGrey, PI, PI2, Themes, ambiant, animateCam, ax, ay, breath0, breath1, buildGeometry, camera, cameraAngle, cirTanAngle, circle, city, clearMask, composer, cubeGeometry, distanceCirle, effect, effectFilm, effectFilmBW, effectHBlur, effectVBlur, effectVignette, friction, inRadius, isAnimated, isTargeted, light, light2, lightAngle, limit, limitAcc, map_range, moveCamera, music, plane, projector, render, renderMaskInverse, renderModel, renderer, rotateLight, rtParams, scene, shaderVignette, skyboxMesh, targetPos, theme, themePos, vx, vy;
     Cfg = {
       LIGHT_SPEED: 0.0025,
       TRANSITION_TARGET_SPEED: 0.05,
@@ -9,36 +9,68 @@
       CITY_COLOR: '#FFAA22',
       AMBIANT_COLOR: '#1A2024',
       SHADOW_BIAS: 0.0001,
-      SHADOW_DARKNESS: 0.5
+      SHADOW_DARKNESS: 0.5,
+      CUSTOM_COLORS: false
     };
     Themes = [
       {
-        cityColor: '#C365AC',
-        ambiantColor: '#3B2389',
-        cityRadius: 50
-      }, {
-        cityColor: '#FFAA22',
-        ambiantColor: '#20242A',
-        cityRadius: 100
+        cityColor: '#FFFFFF',
+        ambiantColor: '#484848',
+        cityRadius: 150,
+        buildingsNumber: 50,
+        cubesNumber: 0,
+        cubeSize: 0
       }, {
         cityColor: '#21F2FF',
         ambiantColor: '#417EA7',
-        cityRadius: 150
+        cityRadius: 150,
+        buildingsNumber: 100,
+        cubesNumber: 10,
+        cubeSize: 50
       }, {
         cityColor: '#00FFB3',
         ambiantColor: '#231137',
-        cityRadius: 200
+        cityRadius: 200,
+        buildingsNumber: 300,
+        cubesNumber: 20,
+        cubeSize: 100
       }, {
-        cityColor: '#FFFFFF',
-        ambiantColor: '#484848',
-        cityRadius: 250
+        cityColor: '#C365AC',
+        ambiantColor: '#3B2389',
+        cityRadius: 250,
+        buildingsNumber: 400,
+        cubesNumber: 50,
+        cubeSize: 200
       }, {
         cityColor: '#00FF96',
         ambiantColor: '#162A16',
-        cityRadius: 300
+        cityRadius: 250,
+        buildingsNumber: 500,
+        cubesNumber: 50,
+        cubeSize: 250
+      }, {
+        cityColor: '#FFAA22',
+        ambiantColor: '#20242A',
+        cityRadius: 250,
+        buildingsNumber: 600,
+        cubesNumber: 50,
+        cubeSize: 300
+      }, {
+        cityColor: '#FF2020',
+        ambiantColor: '#46705A',
+        cityRadius: 250,
+        buildingsNumber: 600,
+        cubesNumber: 50,
+        cubeSize: 400
+      }, {
+        cityColor: '#FF2020',
+        ambiantColor: '#336464',
+        cityRadius: 150,
+        buildingsNumber: 50,
+        cubesNumber: 10,
+        cubeSize: 150
       }
     ];
-    console.log(Themes);
     PI = Math.PI;
     PI2 = Math.PI * 2;
     ax = 0;
@@ -60,13 +92,14 @@
     isTargeted = false;
     isAnimated = false;
     cirTanAngle = 0;
-    theme = Themes[Math.floor(Math.random() * Themes.length)];
+    themePos = -1;
+    theme = Themes[themePos];
     scene = new THREE.Scene;
     scene.fog = new THREE.FogExp2(0xd0e0f0, 0.0020);
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     camera.position.y = 150;
     renderer = new THREE.WebGLRenderer({
-      antialias: true
+      antialias: false
     });
     renderer.shadowMapEnabled = true;
     renderer.shadowMapSoft = true;
@@ -81,7 +114,7 @@
     effectVBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
     effectHBlur.uniforms['h'].value = 2 / (window.innerWidth / 2);
     effectVBlur.uniforms['v'].value = 2 / (window.innerHeight / 2);
-    effectFilm = new THREE.FilmPass(0.10, 0, 0, false);
+    effectFilm = new THREE.FilmPass(0.05, 0, 0, false);
     effectFilmBW = new THREE.FilmPass(0.35, 0.5, 2048, true);
     shaderVignette = THREE.VignetteShader;
     effectVignette = new THREE.ShaderPass(shaderVignette);
@@ -89,7 +122,6 @@
     effectVignette.uniforms["darkness"].value = 1.6;
     effect = new THREE.ShaderPass(THREE.BleachBypassShader);
     effectFilm.renderToScreen = true;
-    effect.renderToScreen = true;
     rtParams = {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
@@ -146,6 +178,17 @@
     };
     render = function() {
       requestAnimationFrame(render);
+      rotateLight();
+      moveCamera();
+      return composer.render(0.01);
+    };
+    rotateLight = function() {
+      lightAngle += Cfg.LIGHT_SPEED;
+      light.position.x = 700 * Math.cos(lightAngle);
+      light.position.z = 700 * Math.sin(lightAngle);
+      return light.position.y = 500;
+    };
+    moveCamera = function() {
       if (!(isTargeted && (isAnimated || inRadius(camera, circle)))) {
         ax = Math.max(Math.min(limitAcc, ax), -limitAcc);
         ax *= friction;
@@ -160,12 +203,11 @@
         vy *= friction;
         vy += ay;
         vy = Math.max(Math.min(5, vy), -5);
+        if (camera.position.y < 5 || camera.position.y > 300) {
+          vy = vy * -1;
+        }
         camera.position.y += vy;
       }
-      lightAngle += Cfg.LIGHT_SPEED;
-      light.position.x = 700 * Math.cos(lightAngle);
-      light.position.z = 700 * Math.sin(lightAngle);
-      light.position.y = 500;
       if (isTargeted || (!isTargeted && inRadius(camera, circle))) {
         targetPos.x += (circle.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED;
         targetPos.y += (circle.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED;
@@ -182,9 +224,7 @@
         isAnimated = true;
         animateCam();
       }
-      camera.lookAt(targetPos);
-      renderer.clear();
-      return composer.render(0.01);
+      return camera.lookAt(targetPos);
     };
     animateCam = function() {
       return TweenMax.to(circle.position, 1, {
@@ -194,7 +234,7 @@
         ease: Expo.easeInOut,
         delay: 0.25,
         onStart: function() {
-          breath1.stop().fadeIn(0.1, 1000);
+          breath1.stop().fadeIn(0.5, 1000);
           return breath1.play().fadeOut(0, 1000);
         },
         onComplete: function() {
@@ -215,7 +255,7 @@
                 ease: Expo.easeInOut,
                 delay: 0.25,
                 onStart: function() {
-                  breath1.stop().fadeIn(0.1, 1000);
+                  breath1.stop().fadeIn(0.5, 1000);
                   return breath1.play().fadeOut(0, 1000);
                 },
                 onComplete: function() {
@@ -242,6 +282,8 @@
     };
     buildGeometry = new THREE.CubeGeometry(1, 1, 1);
     buildGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, 0.5, 0));
+    cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
+    cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, -0.5, 0));
     DarkGrey = {
       buildingMesh: function(i) {
         var circleColor, mesh, targetAngle;
@@ -254,9 +296,10 @@
         mesh.scale.z = mesh.scale.x;
         mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 8 + 8;
         if (mesh.position.distanceTo(scene.position) > theme.cityRadius - 50 && !circle) {
-          console.log(theme.cityRadius);
           plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({
-            color: 0xd0e0f0
+            map: THREE.ImageUtils.loadTexture('images/portal.png'),
+            wireframe: false,
+            transparent: true
           }));
           plane.position.y = 2;
           plane.rotation.x = -PI / 2;
@@ -274,15 +317,13 @@
         return mesh;
       },
       buildSquare: function(i) {
-        var geometry, mesh, scale, targetAngle;
+        var mesh, scale, targetAngle;
         targetAngle = Math.random() * PI2;
-        geometry = new THREE.CubeGeometry(1, 1, 1);
-        geometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, -0.5, 0));
-        mesh = new THREE.Mesh(geometry);
+        mesh = new THREE.Mesh(cubeGeometry);
         mesh.position.x = Math.cos(targetAngle) * 600;
         mesh.position.z = Math.sin(targetAngle) * 600;
         mesh.position.y = 400 * Math.random() + 100;
-        scale = Math.random() * Math.random() * 400;
+        scale = Math.random() * Math.random() * theme.cubeSize;
         mesh.scale.set(scale, scale, scale);
         mesh.rotation.x = Math.random() * PI2;
         mesh.rotation.y = Math.random() * PI2;
@@ -290,7 +331,7 @@
         return mesh;
       },
       cityMesh: function() {
-        var cityGeometry, cityMesh, decoGeometry, ground, i, planeColor, planeGeometry, planeMaterial, _i, _j;
+        var cityGeometry, cityMesh, decoGeometry, ground, i, j, planeColor, planeGeometry, planeMaterial;
         planeColor = new THREE.Color(Cfg.CITY_COLOR);
         planeGeometry = new THREE.PlaneGeometry(400, 400);
         planeGeometry.verticesNeedUpdate = true;
@@ -304,12 +345,16 @@
         ground.castShadow = true;
         ground.receiveShadow = true;
         cityGeometry = new THREE.Geometry;
-        for (i = _i = 0; _i < 600; i = ++_i) {
+        i = 0;
+        while (i < theme.buildingsNumber) {
           THREE.GeometryUtils.merge(cityGeometry, this.buildingMesh(i));
+          i++;
         }
         decoGeometry = new THREE.Geometry;
-        for (i = _j = 0; _j < 50; i = ++_j) {
+        j = 0;
+        while (j < theme.cubesNumber) {
           THREE.GeometryUtils.merge(decoGeometry, this.buildSquare());
+          j++;
         }
         THREE.GeometryUtils.merge(cityGeometry, ground);
         THREE.GeometryUtils.merge(cityGeometry, decoGeometry);
@@ -325,7 +370,7 @@
         return ambient = new THREE.AmbientLight(ambiantColor.getHex());
       },
       events: function() {
-        document.addEventListener('keydown', function(e) {
+        return document.addEventListener('keydown', function(e) {
           if (!isTargeted) {
             if (e.keyCode === 37) {
               ax += 0.001;
@@ -344,10 +389,6 @@
             }
           }
         });
-        return document.addEventListener('click', function(event) {
-          event.preventDefault();
-          return isTargeted = true;
-        });
       },
       restartScene: function() {
         breath0.fadeOut(0, 2000, function() {
@@ -359,9 +400,13 @@
         camera.position.set(5000, 2000, 5000);
         isTargeted = false;
         isAnimated = false;
-        theme = Themes[Math.floor(Math.random() * Themes.length)];
-        Cfg.CITY_COLOR = theme.cityColor;
-        Cfg.AMBIANT_COLOR = theme.ambiantColor;
+        themePos++;
+        if (themePos >= Themes.length) {
+          themePos = 0;
+        }
+        theme = Themes[themePos];
+        Cfg.CITY_COLOR = Cfg.CUSTOM_COLORS ? Cfg.CITY_COLOR : theme.cityColor;
+        Cfg.AMBIANT_COLOR = Cfg.CUSTOM_COLORS ? Cfg.AMBIANT_COLOR : theme.ambiantColor;
         scene.remove(plane);
         scene.remove(circle);
         scene.remove(city);
@@ -379,7 +424,7 @@
       },
       initGui: function() {
         var gui;
-        gui = new dat.GUI;
+        gui = new dat.GUI();
         gui.add(Cfg, 'TRANSITION_TARGET_SPEED', 0, 1).name('target speed').listen();
         gui.add(Cfg, 'LIGHT_SPEED', 0, 0.01).name('light speed').listen();
         gui.add(Cfg, 'RADIUS').name('Camera radius').listen();
@@ -387,7 +432,9 @@
         gui.addColor(Cfg, 'AMBIANT_COLOR').name('Ambiant color').listen();
         gui.add(camera.position, 'y').name('Camera Y').listen();
         gui.add(Cfg, 'SHADOW_BIAS').name('Shadow bias');
-        return gui.add(Cfg, 'SHADOW_DARKNESS').name('Shadow darkness');
+        gui.add(Cfg, 'SHADOW_DARKNESS').name('Shadow darkness');
+        gui.add(Cfg, 'CUSTOM_COLORS').name('custom colors');
+        return gui.close();
       },
       init: function() {
         this.events();
@@ -395,12 +442,11 @@
       },
       renderScene: function() {
         scene.add(light);
-        scene.add(city = this.cityMesh());
-        scene.add(ambiant = this.lights());
         return render();
       }
     };
     DarkGrey.init();
+    DarkGrey.restartScene();
     return DarkGrey.renderScene();
   };
 

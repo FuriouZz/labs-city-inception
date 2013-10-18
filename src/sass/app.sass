@@ -1,4 +1,22 @@
 @import "compass/reset"
+@import "compass"
+@import "compass/css3/user-interface"
 
 html, body
 	overflow: hidden
+
+.keys
+	+single-transition(opacity, .25s, cubic-bezier(.26,.65,.79,.42), 0s)
+	position: absolute
+	bottom: 10px
+	left: 50%
+	margin-left: -100.5px
+	opacity: 0.25
+	z-index: 10
+
+	&:hover
+		opacity: 1
+
+canvas
+	position: absolute
+	z-index: 0
