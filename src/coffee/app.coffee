@@ -6,7 +6,7 @@ window.onload = ->
         RADIUS: 245
         CAMERA_Y: 500
         CITY_COLOR: '#FFAA22'
-        AMBIANT_COLOR: '#1A2024'
+        AMBIENT_COLOR: '#1A2024'
         SHADOW_BIAS: 0.0001
         SHADOW_DARKNESS: 0.5
         CUSTOM_COLORS: false
@@ -15,27 +15,27 @@ window.onload = ->
         # Ghost
         {
             cityColor: '#FFFFFF'
-            ambiantColor: '#484848'
+            ambientColor: '#484848'
             cityRadius: 150
             buildingsNumber: 50
             cubesNumber: 0
             cubeSize: 0
         }
 
-        # Gotham
+        # Green/Red
         {
-            cityColor: '#FFAA22'
-            ambiantColor: '#20242A'
-            cityRadius: 250
-            buildingsNumber: 600
-            cubesNumber: 50
-            cubeSize: 300
+            cityColor: '#FF2020'
+            ambientColor: '#336464'
+            cityRadius: 150
+            buildingsNumber: 50
+            cubesNumber: 10
+            cubeSize: 100
         }
 
         # Winter
         {
             cityColor: '#21F2FF'
-            ambiantColor: '#417EA7'
+            ambientColor: '#417EA7'
             cityRadius: 150
             buildingsNumber: 100
             cubesNumber: 10
@@ -45,7 +45,7 @@ window.onload = ->
         # Night winter
         {
             cityColor: '#0069FF'
-            ambiantColor: '#212528'
+            ambientColor: '#212528'
             cityRadius: 50
             buildingsNumber: 400
             cubesNumber: 10
@@ -55,7 +55,7 @@ window.onload = ->
         # Joker
         {
             cityColor: '#00FF77'
-            ambiantColor: '#231137'
+            ambientColor: '#231137'
             cityRadius: 200
             buildingsNumber: 300
             cubesNumber: 20
@@ -65,7 +65,7 @@ window.onload = ->
         # Violet/Pink
         {
             cityColor: '#C365AC'
-            ambiantColor: '#3B2389'
+            ambientColor: '#3B2389'
             cityRadius: 250
             buildingsNumber: 400
             cubesNumber: 50
@@ -75,7 +75,7 @@ window.onload = ->
         # Green
         {
             cityColor: '#00FF96'
-            ambiantColor: '#162A16'
+            ambientColor: '#162A16'
             cityRadius: 250
             buildingsNumber: 500
             cubesNumber: 50
@@ -85,27 +85,35 @@ window.onload = ->
         # Sands
         {
             cityColor: '#FFA400'
-            ambiantColor: '#4A2C0A'
+            ambientColor: '#4A2C0A'
             cityRadius: 150
             buildingsNumber: 50
             cubesNumber: 20
             cubeSize: 150
         }
 
-        # Green/Red
+        # Gotham
         {
-            cityColor: '#FF2020'
-            ambiantColor: '#336464'
-            cityRadius: 150
-            buildingsNumber: 50
-            cubesNumber: 10
-            cubeSize: 150
+            cityColor: '#FFAA22'
+            ambientColor: '#20242A'
+            cityRadius: 250
+            buildingsNumber: 600
+            cubesNumber: 50
+            cubeSize: 300
         }
 
     ]
 
     PI     = Math.PI
     PI2    = Math.PI*2
+
+
+    # App elements
+    city    = null
+    ambient = null    
+    plane   = null
+    circle  = null
+    light   = null
 
     # Smooth movement
     ax       = 0
@@ -116,33 +124,23 @@ window.onload = ->
     limit    = 0.05
     limitAcc = 0.005
 
-    city    = null
-    ambiant = null
 
-
+    # Variables
     targetPos   = new THREE.Vector3
-    plane = null
 
     cameraAngle =  0
     lightAngle  = 100
 
-    circle = null
-    distanceCirle = 0
-
-    projector = new THREE.Projector
-
     isTargeted = false
     isAnimated = false
 
-    cirTanAngle = 0
     themePos    = -1
-
     theme = Themes[themePos]
 
 
 
 
-
+    # Initilize scene & renderer
     scene     = new THREE.Scene
     scene.fog = new THREE.FogExp2( 0xd0e0f0, 0.0020 )
 
@@ -155,9 +153,6 @@ window.onload = ->
     renderer.shadowMapType    = THREE.PCFShadowMap
     renderer.setSize window.innerWidth, window.innerHeight
     document.body.appendChild renderer.domElement
-
-
-
 
     clearMask = new THREE.ClearMaskPass()
     renderModel = new THREE.RenderPass( scene, camera )
@@ -206,60 +201,7 @@ window.onload = ->
     # composer.addPass( effectSave )
 
 
-    light2  = new THREE.SpotLight 0xd0e0f0, 25, 0, PI / 16, 100
-    light2.position.y = 50
-    scene.add light2
 
-    light  = new THREE.SpotLight 0xFFFFFF, 4, 0, PI / 16, 500
-    light.position.set 0, Cfg.CAMERA_Y, 0
-    light.target.position.set 0, 0, 0
-
-    light.castShadow          = true
-
-    light.shadowCameraNear    = 700
-    light.shadowCameraFar     = camera.far
-    light.shadowCameraFov     = 50
-
-    light.shadowBias          = Cfg.SHADOW_BIAS
-    light.shadowDarkness      = Cfg.SHADOW_DARKNESS
-
-    light.shadowCameraRight    =  5
-    light.shadowCameraLeft     = -5
-    light.shadowCameraTop      =  5
-    light.shadowCameraBottom   = -5
-
-    light.shadowMapWidth      = 2048
-    light.shadowMapHeight     = 2048
-
-    skyboxMesh = new THREE.Mesh( new THREE.CubeGeometry(10000, 10000, 10000), new THREE.MeshPhongMaterial({ color: 0xd0e0f0, side: THREE.BackSide }) )
-    scene.add skyboxMesh
-
-
-    # MUSIC
-    music = new Howl(
-        urls: ['plane.mp3']
-        volume: 0.5
-        loop: true
-    ).play()
-
-    breath0 = new Howl(
-        urls: ['breath0.wav']
-        volume: 0.25
-    )
-
-    breath1 = new Howl(
-        urls: ['wind.mp3']
-        volume: 0.25
-    )
-
-
-    map_range = (value, low1, high1, low2, high2)->
-        return low2 + (high2 - low2) * (value - low1) / (high1 - low1)
-
-    inRadius = (obj1, obj2)->
-        obj1Angle = Math.atan2(obj1.position.z, obj1.position.x)
-        obj2Angle = Math.atan2(obj2.position.z, obj2.position.x)
-        return (obj1Angle > obj2Angle - PI / 8 and obj1Angle < obj2Angle + PI / 8)
 
     #Render the @scene
     render = ->
@@ -278,7 +220,7 @@ window.onload = ->
         light.position.y = 500
 
     moveCamera = ->
-        if not (isTargeted and (isAnimated or inRadius(camera, circle)))
+        if not (isTargeted and (isAnimated or Utils.RadiusDetection(camera, circle)))
             # Rotate camera
             ax = Math.max(Math.min(limitAcc, ax), -limitAcc)
             ax *= friction
@@ -302,7 +244,7 @@ window.onload = ->
             camera.position.y += vy
 
         # Target city or ellipse
-        if isTargeted or (not isTargeted and inRadius(camera, circle))
+        if isTargeted or (not isTargeted and Utils.RadiusDetection(camera, circle))
             targetPos.x += (circle.position.x - targetPos.x) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.y += (circle.position.y - targetPos.y) * Cfg.TRANSITION_TARGET_SPEED
             targetPos.z += (circle.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED
@@ -312,9 +254,9 @@ window.onload = ->
             targetPos.z += (scene.position.z - targetPos.z) * Cfg.TRANSITION_TARGET_SPEED
 
         # Animate targeted
-        if isTargeted and not inRadius(camera, circle)
+        if isTargeted and not Utils.RadiusDetection(camera, circle)
             ax += 0.05
-        else if isTargeted and inRadius(camera, circle) and not isAnimated
+        else if isTargeted and Utils.RadiusDetection(camera, circle) and not isAnimated
             ax = 0
             isAnimated = true
             animateCam()
@@ -361,59 +303,69 @@ window.onload = ->
                                                 breath0.stop().fadeIn(0.5, 1000)
                                                 breath0.play().fadeOut(0, 1000)
                                             onComplete: ->
-                                                DarkGrey.restartScene()
+                                                DarkGrey.Scene.restart()
 
-    # Building geometry
-    buildGeometry = new THREE.CubeGeometry 1, 1, 1
-    buildGeometry.applyMatrix new THREE.Matrix4().makeTranslation 0, 0.5, 0
 
-    cubeGeometry = new THREE.CubeGeometry 1, 1, 1
-    cubeGeometry.applyMatrix new THREE.Matrix4().makeTranslation 0, -0.5, 0
 
-    DarkGrey =
-        # Create buildings
-        buildingMesh: (i)->
+    Utils = 
+        map_range: (value, low1, high1, low2, high2)->
+                return low2 + (high2 - low2) * (value - low1) / (high1 - low1)
+
+        RadiusDetection: (obj1, obj2)->
+            obj1Angle = Math.atan2(obj1.position.z, obj1.position.x)
+            obj2Angle = Math.atan2(obj2.position.z, obj2.position.x)
+            return (obj1Angle > obj2Angle - PI / 8 and obj1Angle < obj2Angle + PI / 8)
+
+
+    # BUILDING Object
+    Building = (theme)->
+        @geometry = @Geometry()
+        return @Mesh({ radius: theme.cityRadius })
+
+    Building.prototype = 
+        Geometry: ->
+            # Building geometry
+            geometry = new THREE.CubeGeometry 1, 1, 1
+            geometry.applyMatrix new THREE.Matrix4().makeTranslation 0, 0.5, 0
+            
+            return geometry
+
+        Mesh: (params)->
             targetAngle = Math.random() * PI2
 
             # Building mesh
-            mesh = new THREE.Mesh buildGeometry
-            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.1) * theme.cityRadius
-            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.1) * theme.cityRadius
+            mesh = new THREE.Mesh(@geometry)
+            mesh.position.x = Math.cos(targetAngle) * (Math.random()+0.1) * params.radius
+            mesh.position.z = Math.sin(targetAngle) * (Math.random()+0.1) * params.radius
             mesh.position.y = 0
 
             mesh.scale.x = Math.random()*Math.random()*Math.random()*Math.random() * 50 + 10
             mesh.scale.z = mesh.scale.x
             mesh.scale.y = (Math.random() * Math.random() * Math.random() * mesh.scale.x) * 10 + 10
 
-            if mesh.position.distanceTo(scene.position) > theme.cityRadius - 50 and not circle
-                plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ map:THREE.ImageUtils.loadTexture('images/portal.png'), wireframe: false, transparent: true }))
-                plane.position.y = 2
-                plane.rotation.x = -PI / 2
+            return mesh             
 
-                circleColor = new THREE.Color(Cfg.CITY_COLOR)
-                circle = new THREE.Mesh new THREE.SphereGeometry(2.5, 100, 100), new THREE.MeshLambertMaterial({ color: circleColor.getHex() })
-                circle.position.x = mesh.position.x
-                circle.position.z = mesh.position.z
-                circle.position.y = mesh.position.y + 100
-                circle.castShadow = true
-                scene.add circle
 
-                distanceCirle = circle.position.distanceTo scene.position
+    # CUBE Object
+    Cube = ->
+        @geometry = @Geometry()
+        return @Mesh({ cubeSize: theme.cubeSize })
 
-            return mesh
+    Cube.prototype =
+        Geometry: ->
+            geometry = new THREE.CubeGeometry 1, 1, 1
+            geometry.applyMatrix new THREE.Matrix4().makeTranslation 0, -0.5, 0
+            return geometry
 
-        # Create buildings
-        buildSquare: (i)->
+        Mesh: (params)->
             targetAngle = Math.random() * PI2
 
-            # Building mesh
-
-            mesh = new THREE.Mesh(cubeGeometry)
+            mesh = new THREE.Mesh(@geometry)
             mesh.position.x = Math.cos(targetAngle) * 600
             mesh.position.z = Math.sin(targetAngle) * 600
             mesh.position.y = 400 * Math.random() + 100
 
-            scale = Math.random() * Math.random() * theme.cubeSize
+            scale = Math.random() * Math.random() * params.cubeSize
 
             mesh.scale.set scale, scale, scale
 
@@ -424,50 +376,196 @@ window.onload = ->
             return mesh
 
 
-        # Create city
-        cityMesh: ->
-            # Ground
-            planeColor                       = new THREE.Color(Cfg.CITY_COLOR)
-            planeGeometry                    = new THREE.PlaneGeometry 400, 400
-            planeGeometry.verticesNeedUpdate = true
-            planeMaterial = new THREE.MeshPhongMaterial
-                color: planeColor.getHex()
-            planeMaterial.ambiant = planeMaterial.color
 
-            ground               = new THREE.Mesh planeGeometry, planeMaterial
+    # CITY Object
+    City = (theme)->
+        @theme = theme
+        @geometry = new THREE.Geometry
+        @material = @Material(theme.cityColor)
+        @generateCity()
+        return @Mesh()
+
+    City.prototype = 
+        Material: (color)->
+            matColor = new THREE.Color(color)
+            return new THREE.MeshPhongMaterial
+                color: matColor.getHex()
+
+        Mesh: ->
+            mesh = new THREE.Mesh(@geometry, @material)
+            mesh.scale.set 1, 1, 1
+            mesh.castShadow    = true
+            mesh.receiveShadow = true
+
+            return mesh
+
+        generateCity: ->
+            @ground()
+            @buildings()
+            @cubes()
+
+        buildings: ->
+            i = 0
+            while i < @theme.buildingsNumber
+                building = new Building(@theme)
+
+                if building.position.distanceTo(scene.position) > @theme.cityRadius - 50 and not circle
+                    plane = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshBasicMaterial({ map:THREE.ImageUtils.loadTexture('images/portal.png'), wireframe: false, transparent: true }))
+                    plane.position.y = 2
+                    plane.rotation.x = -PI / 2
+
+                    circleColor = new THREE.Color(Cfg.CITY_COLOR)
+                    circle = new THREE.Mesh new THREE.SphereGeometry(2.5, 100, 100), new THREE.MeshLambertMaterial({ color: circleColor.getHex() })
+                    circle.position.x = building.position.x
+                    circle.position.z = building.position.z
+                    circle.position.y = building.position.y + 100
+                    circle.castShadow = true
+                    scene.add circle
+
+                THREE.GeometryUtils.merge(@geometry, building)
+
+                i++
+
+        cubes: ->
+            i = 0
+            while i < @theme.cubesNumber
+                cube = new Cube(@theme)
+                THREE.GeometryUtils.merge(@geometry, cube)
+                i++
+
+        ground: ->
+            groundGeometry                    = new THREE.PlaneGeometry 400, 400
+            groundGeometry.verticesNeedUpdate = true
+            
+            groundMaterial         = @material
+            groundMaterial.ambiant = @material
+
+            ground               = new THREE.Mesh groundGeometry, groundMaterial
             ground.rotation.x    = -PI / 2
             ground.scale.set 100, 100, 100
             ground.castShadow    = true
             ground.receiveShadow = true
 
-            # City
-            cityGeometry = new THREE.Geometry
-            i = 0
-            while i < theme.buildingsNumber
-            # for i in [0...600]
-                THREE.GeometryUtils.merge cityGeometry, @buildingMesh(i)
-                i++
+            THREE.GeometryUtils.merge(@geometry, ground)
 
-            decoGeometry = new THREE.Geometry
-            j = 0
-            while j < theme.cubesNumber
-                THREE.GeometryUtils.merge decoGeometry, @buildSquare()
-                j++
 
-            THREE.GeometryUtils.merge cityGeometry, ground
-            THREE.GeometryUtils.merge cityGeometry, decoGeometry
+    Light =
+        Ambient: (color)->
+            ambientColor = new THREE.Color(color)
+            ambient      = new THREE.AmbientLight(ambientColor.getHex())
+            return ambient
 
-            cityMesh = new THREE.Mesh cityGeometry, planeMaterial
-            cityMesh.scale.set 1, 1, 1
-            cityMesh.castShadow    = true
-            cityMesh.receiveShadow = true
+        Spot: (color)->
+            light  = new THREE.SpotLight 0xFFFFFF, 4, 0, PI / 16, 500
+            light.position.set 0, Cfg.CAMERA_Y, 0
+            light.target.position.set 0, 0, 0
 
-            return cityMesh
+            light.castShadow          = true
 
-        # Ligths
-        lights: ->
-            ambiantColor = new THREE.Color(Cfg.AMBIANT_COLOR)
-            return ambient = new THREE.AmbientLight(ambiantColor.getHex())
+            light.shadowCameraNear    = 700
+            light.shadowCameraFar     = camera.far
+            light.shadowCameraFov     = 50
+
+            light.shadowBias          = Cfg.SHADOW_BIAS
+            light.shadowDarkness      = Cfg.SHADOW_DARKNESS
+
+            light.shadowCameraRight    =  5
+            light.shadowCameraLeft     = -5
+            light.shadowCameraTop      =  5
+            light.shadowCameraBottom   = -5
+
+            light.shadowMapWidth      = 2048
+            light.shadowMapHeight     = 2048
+
+            return light           
+
+
+    Skybox = ->
+        return @Mesh()
+
+    Skybox.prototype =
+        Geometry: ->
+            return new THREE.CubeGeometry(10000, 10000, 10000)
+
+        Material: ->
+            return new THREE.MeshPhongMaterial({ color: 0xd0e0f0, side: THREE.BackSide })
+
+        Mesh: ->
+            mesh = new THREE.Mesh( new THREE.CubeGeometry(10000, 10000, 10000), new THREE.MeshPhongMaterial({ color: 0xd0e0f0, side: THREE.BackSide }) )
+            return mesh
+
+
+    # MUSIC
+    music = new Howl(
+        urls: ['plane.mp3']
+        volume: 0.5
+        loop: true
+    )#.play()
+
+    breath0 = new Howl(
+        urls: ['breath0.wav']
+        volume: 0.25
+    )
+
+    breath1 = new Howl(
+        urls: ['wind.mp3']
+        volume: 0.25
+    )
+
+    DarkGrey =
+        Scene:
+            init: ->
+                skybox = new Skybox()
+                scene.add(skybox)
+
+                light = new Light.Spot()
+                scene.add(light)
+
+            clean: ->
+                scene.remove plane
+                scene.remove circle
+                scene.remove city
+                scene.remove ambient            
+
+                circle = null
+                camera.lookAt scene.position
+
+            start: ->
+                # Initialize scene
+                camera.position.set 5000, 2000, 5000
+                isTargeted = false
+                isAnimated = false
+
+                themePos++
+                if themePos >= Themes.length
+                    themePos = 0
+
+                theme             = Themes[themePos]
+                Cfg.CITY_COLOR    = if Cfg.CUSTOM_COLORS then Cfg.CITY_COLOR else theme.cityColor
+                Cfg.AMBIENT_COLOR = if Cfg.CUSTOM_COLORS then Cfg.AMBIENT_COLOR else theme.ambientColor
+
+                city = new City(theme)
+                scene.add(city)
+
+                ambient = new Light.Ambient(Cfg.AMBIENT_COLOR)
+                scene.add(ambient)
+                
+                # Launch animations & sounds
+                breath0.fadeOut(0, 2000, -> breath0.stop())
+                breath1.fadeOut(0, 2000, -> breath1.stop())
+
+                TweenMax.to camera.position, 1.5,
+                    y:150
+                TweenMax.to Cfg, 1.5,
+                    RADIUS: 245
+
+            restart: ->
+                @clean()
+                @start()
+
+            render: ->
+                scene.add light
+                render()
 
         events: ->
             document.addEventListener 'keydown', (e)->
@@ -484,45 +582,13 @@ window.onload = ->
                     if e.keyCode == 32
                         isTargeted = true
 
-        restartScene: ->
-            breath0.fadeOut(0, 2000, -> breath0.stop())
-            breath1.fadeOut(0, 2000, -> breath1.stop())
-
-            camera.position.set 5000, 2000, 5000
-            isTargeted = false
-            isAnimated = false
-
-            themePos++
-            if themePos >= Themes.length
-                themePos = 0
-
-            theme             = Themes[themePos]
-            Cfg.CITY_COLOR    = if Cfg.CUSTOM_COLORS then Cfg.CITY_COLOR else theme.cityColor
-            Cfg.AMBIANT_COLOR = if Cfg.CUSTOM_COLORS then Cfg.AMBIANT_COLOR else theme.ambiantColor
-
-            scene.remove plane
-            scene.remove circle
-            scene.remove city
-            scene.remove ambiant
-
-            circle = null
-            camera.lookAt scene.position
-
-            scene.add    city = DarkGrey.cityMesh()
-            scene.add    ambiant = DarkGrey.lights()
-
-            TweenMax.to camera.position, 1.5,
-                y:150
-            TweenMax.to Cfg, 1.5,
-                RADIUS: 245
-
         initGui: ->
             gui = new dat.GUI()
             gui.add(Cfg, 'TRANSITION_TARGET_SPEED', 0, 1).name('target speed').listen()
             gui.add(Cfg, 'LIGHT_SPEED', 0, 0.01).name('light speed').listen()
             gui.add(Cfg, 'RADIUS').name('Camera radius').listen()
             gui.addColor(Cfg, 'CITY_COLOR').name('City color').listen()
-            gui.addColor(Cfg, 'AMBIANT_COLOR').name('Ambiant color').listen()
+            gui.addColor(Cfg, 'AMBIENT_COLOR').name('Ambiant color').listen()
             gui.add(camera.position, 'y').name('Camera Y').listen()
             gui.add(Cfg, 'SHADOW_BIAS').name('Shadow bias')
             gui.add(Cfg, 'SHADOW_DARKNESS').name('Shadow darkness')
@@ -532,12 +598,8 @@ window.onload = ->
         init: ->
             @events()
             @initGui()
-
-        renderScene: ->
-            scene.add light
-
-            render()
+            @Scene.init()
 
     DarkGrey.init()
-    DarkGrey.restartScene()
-    DarkGrey.renderScene()
+    DarkGrey.Scene.start()
+    DarkGrey.Scene.render()
